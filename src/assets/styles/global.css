@@ -1,0 +1,459 @@
+/**
+ * Electron Augment Skeleton - 全局样式
+ * 基于原项目的 Vue + WXT 架构样式系统
+ */
+
+/* CSS 变量定义 */
+:root {
+  /* 主色调 - 青绿色主题 */
+  --primary-color: #4ecdc4;
+  --primary-hover: #7dd3c0;
+  --primary-light: #e0f7f5;
+  --primary-dark: #3ba99f;
+  --cyan-color: #66d2ce;
+
+  /* 透明度工具变量（模拟fadeout效果） */
+  --alpha-05: 0.05; /* fadeout 95% */
+  --alpha-10: 0.1; /* fadeout 90% */
+
+  /* 颜色透明度变量 */
+  --cyan-fade-95: rgba(102, 210, 206, var(--alpha-05));
+  --cyan-fade-90: rgba(102, 210, 206, var(--alpha-10));
+  --cyan-fade-85: rgba(102, 210, 206, 0.2);
+  --success-fade-95: rgba(82, 196, 26, var(--alpha-05));
+  --success-fade-90: rgba(82, 196, 26, var(--alpha-10));
+  --success-fade-85: rgba(82, 196, 26, 0.2);
+  --danger-fade-95: rgba(245, 34, 45, var(--alpha-05));
+  --danger-fade-90: rgba(245, 34, 45, var(--alpha-10));
+  --danger-fade-85: rgba(245, 34, 45, 0.2);
+
+  /* 辅助色 - 配合青绿主题 */
+  --secondary-color: #e8e8e8;
+  --secondary-hover: #d0d0d0;
+  --success-color: #52c41a;
+  --success-light: #f6ffed;
+  --success-dark: #389e0d;
+  --warning-color: #d4c4a8;
+  --warning-light: #fdf6e3;
+  --warning-dark: #b8a082;
+  --danger-color: #ff7875;
+  --danger-light: #fff2f0;
+  --danger-dark: #f5222d;
+
+  /* 中性色 - 配合青绿主题的灰色系 */
+  --gray-50: #fafbfb;
+  --gray-100: #f0f2f2;
+  --gray-200: #e8e8e8;
+  --gray-300: #d0d0d0;
+  --gray-400: #b8b8b8;
+  --gray-500: #8c8c8c;
+  --gray-600: #595959;
+  --gray-700: #434343;
+  --gray-800: #262626;
+  --gray-900: #000000;
+
+  /* 文字颜色 */
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --text-light: #ffffff;
+
+  /* 背景色 - 保持白色主背景，配合青绿主题 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f6f8;
+  --bg-accent: #e0f7f5;
+  --bg-dark: #434343;
+  --bg-hover: #f0f2f2;
+  --bg-overlay: rgba(78, 205, 196, 0.1);
+
+  /* 边框 - 配合青绿主题 */
+  --border-color: #e8e8e8;
+  --border-light: #f0f2f2;
+  --border-dark: #d0d0d0;
+  --border-accent: #4ecdc4;
+  --border-cyan: #66d2ce;
+  --border-cyan-fade-95: rgba(102, 210, 206, var(--alpha-05));
+  --border-cyan-fade-90: rgba(102, 210, 206, var(--alpha-10));
+  --border-cyan-fade-85: rgba(102, 210, 206, 0.2);
+
+  /* 阴影 - 配合青绿主题的柔和阴影 */
+  --shadow-sm: 0 1px 2px rgba(78, 205, 196, 0.08);
+  --shadow: 0 2px 4px rgba(78, 205, 196, 0.12);
+  --shadow-md: 0 4px 8px rgba(78, 205, 196, 0.16);
+  --shadow-lg: 0 8px 16px rgba(78, 205, 196, 0.2);
+  --shadow-xl: 0 16px 32px rgba(78, 205, 196, 0.24);
+  --shadow-primary: 0 4px 12px rgba(78, 205, 196, 0.3);
+
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 50%;
+
+  /* 间距 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 20px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+  --spacing-3xl: 48px;
+
+  /* 字体 */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+
+  /* 字体大小 */
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+
+  /* 行高 */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Z-index 层级 */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+
+  /* 过渡动画 */
+  --transition-fast: 0.15s ease-out;
+  --transition-normal: 0.3s ease-out;
+  --transition-slow: 0.5s ease-out;
+
+  /* 品牌颜色 - Vue/Tauri/Rust */
+  --vue-color: #42b883;
+  --vue-color-dark: #2d7a5e;
+  --vue-color-bg: rgba(66, 184, 131, 0.1);
+  --vue-color-border: rgba(66, 184, 131, 0.3);
+  --vue-color-border-hover: rgba(66, 184, 131, 0.4);
+  --vue-color-border-strong: rgba(66, 184, 131, 0.5);
+  --vue-color-icon-bg: rgba(66, 184, 131, 0.15);
+
+  --tauri-color: #ffc131;
+  --tauri-color-dark: #b8891f;
+  --tauri-color-bg: rgba(255, 193, 49, 0.1);
+  --tauri-color-border: rgba(255, 193, 49, 0.3);
+  --tauri-color-border-hover: rgba(255, 193, 49, 0.4);
+  --tauri-color-border-strong: rgba(255, 193, 49, 0.5);
+  --tauri-color-icon-bg: rgba(255, 193, 49, 0.15);
+
+  --rust-color: #ce5c00;
+  --rust-color-dark: #9a4500;
+  --rust-color-bg: rgba(206, 92, 0, 0.1);
+  --rust-color-border: rgba(206, 92, 0, 0.3);
+  --rust-color-border-hover: rgba(206, 92, 0, 0.4);
+  --rust-color-border-strong: rgba(206, 92, 0, 0.5);
+  --rust-color-icon-bg: rgba(206, 92, 0, 0.15);
+
+  /* 渐变 */
+  --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  --gradient-bg-light: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  --gradient-bg-reverse: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  --gradient-step-line: linear-gradient(180deg, var(--primary-color) 0%, var(--border-color) 100%);
+
+  /* 语义化尺寸变量 */
+  --circle-size-sm: 96px;
+  --circle-size-lg: 128px;
+  --circle-offset-sm: -32px;
+  --circle-offset-lg: -40px;
+  --icon-size-md: 48px;
+  --icon-size-lg: 40px;
+  --badge-dot-size: 8px;
+  --step-number-size: 40px;
+  --step-line-width: 4px;
+  --step-line-height: 72px;
+}
+
+/* 全局重置 */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gray-400);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-500);
+}
+
+/* 选择文本样式 */
+::selection {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+/* 焦点样式 */
+:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* 按钮基础样式 */
+button {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+/* 输入框基础样式 */
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+/* 链接样式 */
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--primary-hover);
+}
+
+/* 标题样式 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+}
+
+h1 {
+  font-size: var(--font-size-3xl);
+}
+h2 {
+  font-size: var(--font-size-2xl);
+}
+h3 {
+  font-size: var(--font-size-xl);
+}
+h4 {
+  font-size: var(--font-size-lg);
+}
+h5 {
+  font-size: var(--font-size);
+}
+h6 {
+  font-size: var(--font-size-sm);
+}
+
+/* 段落样式 */
+p {
+  margin: 0 0 var(--spacing) 0;
+  color: var(--text-secondary);
+}
+
+/* 列表样式 */
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 工具类 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.text-right {
+  text-align: right;
+}
+
+.flex {
+  display: flex;
+}
+.flex-col {
+  flex-direction: column;
+}
+.items-center {
+  align-items: center;
+}
+.justify-center {
+  justify-content: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+
+.w-full {
+  width: 100%;
+}
+.h-full {
+  height: 100%;
+}
+
+.hidden {
+  display: none;
+}
+.block {
+  display: block;
+}
+.inline-block {
+  display: inline-block;
+}
+
+/* 图标样式优化 */
+.tab-icon {
+  font-size: var(--font-size-lg);
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 按钮中的图标样式 */
+.btn svg {
+  margin-right: var(--spacing-xs);
+  width: 1em;
+  height: 1em;
+}
+
+/* 标题中的图标样式 */
+h2 svg,
+h3 svg {
+  margin-right: var(--spacing-sm);
+  color: var(--primary-color);
+  vertical-align: middle;
+}
+
+/* 旋转动画 */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== 公共卡片样式基类 ===== */
+.card-base {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  background: var(--bg-primary);
+  transition: all var(--transition-normal);
+}
+
+.card-base:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 卡片背景圆圈效果 */
+.card-bg-circle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.card-base:hover .card-bg-circle {
+  opacity: 1;
+}
+
+/* 卡片内容容器 */
+.card-content {
+  position: relative;
+  z-index: 1;
+}

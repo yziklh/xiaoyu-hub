@@ -1,0 +1,42 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependencies
+node_modules
+dist
+dist-ssr
+*.local
+
+# Auto-generated files
+components.d.js
+components.d.ts
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/
+src-tauri/classroom-agent.key
+
+# Editor directories and files
+.vscode/
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment
+.env
+
+# AI tools memory
+.cunzhi-memory/
+
+# Temporary files
+folder-alias.json
+/DirectoryV3.xml
