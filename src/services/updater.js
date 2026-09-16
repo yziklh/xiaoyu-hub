@@ -21,14 +21,14 @@ export async function downloadAndInstall(downloadUrl) {
 
 /** 监听更新进度 */
 export function onUpdateProgress(callback) {
-  return listen('updater:progress', (event) => {
+  return listen('updater:progress', event => {
     callback(event.payload)
   })
 }
 
 /** 监听更新状态 */
 export function onUpdateStatus(callback) {
-  return listen('updater:status', (event) => {
+  return listen('updater:status', event => {
     callback(event.payload)
   })
 }

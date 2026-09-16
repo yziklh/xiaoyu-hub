@@ -90,11 +90,7 @@
 import { useToast } from '@composables/useToast'
 import { DEFAULT_API_BASE, getApiBase, setApiBase } from '@/config/api'
 import { useDeviceStore } from '@/stores/device'
-import {
-  isAgentAutostartEnabled,
-  setAgentAutostart,
-  testAgentTts,
-} from '@/services/agentBridge'
+import { isAgentAutostartEnabled, setAgentAutostart, testAgentTts } from '@/services/agentBridge'
 
 // 使用 Stores 和 Composables
 const appStore = useAppStore()

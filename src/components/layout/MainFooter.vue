@@ -36,13 +36,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useDeviceStore } from '@/stores/device'
 import { useToast } from '@composables/useToast'
-import {
-  checkForUpdate,
-  downloadAndInstall,
-  getAppVersion,
-  onUpdateProgress,
-  onUpdateStatus,
-} from '@/services/updater'
+import { checkForUpdate, downloadAndInstall, getAppVersion, onUpdateProgress, onUpdateStatus } from '@/services/updater'
 
 const deviceStore = useDeviceStore()
 const toast = useToast()
@@ -120,7 +114,7 @@ onMounted(async () => {
     appVersion.value = '1.0.1'
   }
 
-  unlistenProgress = await onUpdateProgress((payload) => {
+  unlistenProgress = await onUpdateProgress(payload => {
     const { downloaded, total } = payload || {}
     if (total) {
       const percent = Math.min(100, Math.round((downloaded / total) * 100))
@@ -129,7 +123,7 @@ onMounted(async () => {
     }
   })
 
-  unlistenStatus = await onUpdateStatus((status) => {
+  unlistenStatus = await onUpdateStatus(status => {
     if (status === 'downloading') {
       updateStatusText.value = '正在下载...'
     } else if (status === 'installing') {

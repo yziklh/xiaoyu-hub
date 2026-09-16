@@ -65,11 +65,7 @@
       <!-- 右侧：时间 + 最近动态 -->
       <aside class="dashboard-side">
         <ClockWidget />
-        <ActivityTimeline
-          :items="deviceStore.activities"
-          :limit="4"
-          show-more
-        />
+        <ActivityTimeline :items="deviceStore.activities" :limit="4" show-more />
       </aside>
     </div>
   </div>
@@ -351,7 +347,9 @@ onUnmounted(() => {
   background: #fff;
   cursor: pointer;
   text-align: left;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .function-card:hover {

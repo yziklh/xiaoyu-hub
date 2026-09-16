@@ -30,7 +30,7 @@ export const api = {
 
   // 系统操作
   system: {
-    readFile: async (path) => {
+    readFile: async path => {
       // 验证文件路径
       if (!validateFilePath(path)) {
         logger.error('Invalid file path:', path)

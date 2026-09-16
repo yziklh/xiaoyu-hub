@@ -24,15 +24,15 @@
       <h4>颜色控制</h4>
       <div class="icon-grid">
         <div class="icon-item">
-          <icon-custom-logo class="demo-icon" style="color: #ff6b6b;" />
+          <icon-custom-logo class="demo-icon" style="color: #ff6b6b" />
           <span>红色</span>
         </div>
         <div class="icon-item">
-          <icon-custom-tauri class="demo-icon" style="color: #FFC131;" />
+          <icon-custom-tauri class="demo-icon" style="color: #ffc131" />
           <span>Tauri 金色</span>
         </div>
         <div class="icon-item">
-          <icon-custom-vue class="demo-icon" style="color: #42b883;" />
+          <icon-custom-vue class="demo-icon" style="color: #42b883" />
           <span>Vue 绿色</span>
         </div>
       </div>
@@ -42,15 +42,15 @@
       <h4>大小调整</h4>
       <div class="icon-grid">
         <div class="icon-item">
-          <icon-custom-logo style="font-size: 24px;" />
+          <icon-custom-logo style="font-size: 24px" />
           <span>24px</span>
         </div>
         <div class="icon-item">
-          <icon-custom-logo style="font-size: 48px;" />
+          <icon-custom-logo style="font-size: 48px" />
           <span>48px</span>
         </div>
         <div class="icon-item">
-          <icon-custom-logo style="font-size: 72px;" />
+          <icon-custom-logo style="font-size: 72px" />
           <span>72px</span>
         </div>
       </div>
@@ -61,15 +61,9 @@
       <div class="dynamic-demo">
         <component :is="currentIcon" class="dynamic-icon" />
         <div class="button-group">
-          <button @click="currentIcon = IconCustomLogo" class="btn btn-sm">
-            Logo
-          </button>
-          <button @click="currentIcon = IconCustomTauri" class="btn btn-sm">
-            Tauri
-          </button>
-          <button @click="currentIcon = IconCustomVue" class="btn btn-sm">
-            Vue
-          </button>
+          <button class="btn btn-sm" @click="currentIcon = IconCustomLogo">Logo</button>
+          <button class="btn btn-sm" @click="currentIcon = IconCustomTauri">Tauri</button>
+          <button class="btn btn-sm" @click="currentIcon = IconCustomVue">Vue</button>
         </div>
       </div>
     </div>
@@ -104,9 +98,8 @@ const iconComponent = ref(IconCustomLogo)
       <icon-proicons-info />
       <div>
         <strong>提示：</strong>
-        将你的 SVG 图标文件放入 <code>src/assets/icons/</code> 目录，
-        然后使用 <code>&lt;icon-custom-文件名 /&gt;</code> 即可使用。
-        查看 <code>ICONS.md</code> 了解更多详情。
+        将你的 SVG 图标文件放入 <code>src/assets/icons/</code> 目录， 然后使用
+        <code>&lt;icon-custom-文件名 /&gt;</code> 即可使用。 查看 <code>ICONS.md</code> 了解更多详情。
       </div>
     </div>
   </div>
@@ -244,4 +237,3 @@ const currentIcon = ref(IconCustomLogo)
   font-size: var(--font-size-sm);
 }
 </style>
-

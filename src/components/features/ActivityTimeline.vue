@@ -26,12 +26,7 @@
     </div>
     <div v-else class="empty">暂无动态，等待课堂通知...</div>
 
-    <button
-      v-if="showMore && hasMore"
-      class="more-btn"
-      type="button"
-      @click="handleMore"
-    >
+    <button v-if="showMore && hasMore" class="more-btn" type="button" @click="handleMore">
       查看更多（{{ items.length - limit }} 条）
     </button>
   </div>

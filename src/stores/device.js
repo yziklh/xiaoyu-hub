@@ -4,11 +4,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { createBindCode, getBindStatus, getBindStatusByCode, getRecentCommands } from '@/api/broadcast'
-import {
-  configureAgent,
-  stopAgent,
-  onAgentConnectionStatus,
-} from '@/services/agentBridge'
+import { configureAgent, stopAgent, onAgentConnectionStatus } from '@/services/agentBridge'
 import { logger } from '@/utils/logger'
 import { buildNotifyTitle, mapCommandStatus } from '@/utils/broadcast'
 
@@ -108,9 +104,7 @@ export const useDeviceStore = defineStore(
 
     async function checkBindStatus() {
       const waitingCode = bindCode.value
-      const status = waitingCode
-        ? await getBindStatusByCode(waitingCode)
-        : await getBindStatus(ensureDeviceId())
+      const status = waitingCode ? await getBindStatusByCode(waitingCode) : await getBindStatus(ensureDeviceId())
 
       if (!status?.bound || !status.deviceToken) {
         return status

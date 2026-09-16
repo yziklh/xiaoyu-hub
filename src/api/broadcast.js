@@ -46,7 +46,5 @@ export function getRecentCommands(deviceId, deviceToken, limit = 20) {
 
 /** 检查更新 */
 export function checkUpdate(version, platform = 'windows') {
-  return request(
-    `/api/device/check-update?version=${encodeURIComponent(version || '')}&platform=${platform}`
-  )
+  return request(`/api/device/check-update?version=${encodeURIComponent(version || '')}&platform=${platform}`)
 }
