@@ -16,6 +16,10 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
 
+# 私有仓库需要显式授权，否则无法创建 Release
+permissions:
+  contents: write
+
 jobs:
   generate-changelog:
     runs-on: ubuntu-latest
