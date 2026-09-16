@@ -1,7 +1,7 @@
 <template>
   <TransitionGroup name="toast-list" tag="div" class="toast-container">
     <div
-      v-for="(toast, index) in toasts"
+      v-for="toast in toasts"
       :key="toast.id"
       :class="['toast', `toast-${toast.type}`]"
       role="alert"

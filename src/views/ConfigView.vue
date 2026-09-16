@@ -180,7 +180,7 @@ onMounted(async () => {
   if (!appStore.version) {
     try {
       await appStore.initialize()
-    } catch (error) {
+    } catch {
       toast.error('加载应用信息失败')
     }
   }
