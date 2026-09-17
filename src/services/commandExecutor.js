@@ -48,6 +48,12 @@ export async function executeCommand(envelope, sendAck) {
       return
     }
 
+    if (type === 'PUSH_ATTACHMENT') {
+      // 附件由 Rust 常驻 Agent 下载处理，此处仅记录
+      sendAck(requestId, 'SUCCESS', '附件已处理')
+      return
+    }
+
     if (type === 'HEARTBEAT_ACK') {
       return
     }

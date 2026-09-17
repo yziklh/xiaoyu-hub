@@ -1,3 +1,4 @@
+use crate::agent::attachment::{self, ReceivedFileMeta};
 use crate::agent::config::AgentConfig;
 use crate::agent::updater::{self, UpdateCheckResult};
 use crate::agent::AgentManager;
@@ -73,6 +74,36 @@ pub async fn updater_check(
     }
 
     Ok(result)
+}
+
+/// 获取附件默认保存目录
+#[tauri::command]
+pub fn attachment_get_download_dir() -> String {
+    attachment::get_download_dir().to_string_lossy().to_string()
+}
+
+/// 列出已接收附件
+#[tauri::command]
+pub fn attachment_list_files() -> Result<Vec<ReceivedFileMeta>, String> {
+    attachment::list_received_files()
+}
+
+/// 打开本地文件
+#[tauri::command]
+pub fn attachment_open_file(path: String) -> Result<(), String> {
+    attachment::open_file(&path)
+}
+
+/// 下载远程文件到本地目录
+#[tauri::command]
+pub async fn attachment_download_file(
+    manager: State<'_, AgentManager>,
+    url: String,
+    file_name: String,
+) -> Result<String, String> {
+    let config = manager.get_config();
+    let path = attachment::download_file(&config, &url, &file_name).await?;
+    Ok(path.to_string_lossy().to_string())
 }
 
 /// 下载并安装更新包

@@ -25,11 +25,19 @@
       }
     ],
     "security": {
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$DOCUMENT/FishHub/**",
+          "$APPDATA/classroom-agent/**",
+          "$HOME/Documents/FishHub/**"
+        ]
+      },
       "csp": {
         "default-src": "'self' customprotocol: asset:",
         "connect-src": "ipc: http://ipc.localhost http://localhost:8098 ws://localhost:8098 http:// https: ws: wss:",
         "font-src": "'self'",
-        "img-src": "'self' asset: http://asset.localhost blob: data:",
+        "img-src": "'self' asset: http://asset.localhost blob: data: http: https:",
         "style-src": "'unsafe-inline' 'self'",
         "script-src": "'self' 'unsafe-inline' http://localhost:8098"
       }

@@ -1,3 +1,4 @@
+use crate::agent::attachment;
 use crate::agent::config::AgentConfig;
 use crate::agent::idempotency::IdempotencyStore;
 use crate::agent::logger;
@@ -132,6 +133,50 @@ async fn handle_command(
         let _ = app.emit("agent:show_message", data);
         idempotency.remember(&request_id, "SUCCESS", "弹窗已展示");
         send_ack(&write, &request_id, "SUCCESS", "弹窗已展示").await;
+        return;
+    }
+
+    if msg_type == "PUSH_ATTACHMENT" {
+        send_ack(&write, &request_id, "RECEIVED", "已接收").await;
+        let app_bg = app.clone();
+        let config_bg = config.clone();
+        let write_bg = write.clone();
+        let request_id_bg = request_id.clone();
+        let data_bg = data.clone();
+        let idempotency_bg = idempotency.clone();
+        tokio::spawn(async move {
+            match attachment::handle_push_attachment(&config_bg, &data_bg).await {
+                Ok(result) => {
+                    let mut payload = data_bg.clone();
+                    if let Some(obj) = payload.as_object_mut() {
+                        obj.insert(
+                            "localPath".to_string(),
+                            json!(result.local_path),
+                        );
+                        obj.insert(
+                            "shouldDisplay".to_string(),
+                            json!(result.should_display),
+                        );
+                        obj.insert("saved".to_string(), json!(result.saved));
+                    }
+                    let _ = app_bg.emit(
+                        "agent:push_attachment",
+                        json!({
+                            "requestId": request_id_bg,
+                            "data": payload,
+                            "result": result,
+                        }),
+                    );
+                    idempotency_bg.remember(&request_id_bg, "SUCCESS", &result.message);
+                    send_ack(&write_bg, &request_id_bg, "SUCCESS", &result.message).await;
+                }
+                Err(err) => {
+                    logger::error(&format!("附件处理失败: {err}"));
+                    idempotency_bg.remember(&request_id_bg, "FAILED", &err);
+                    send_ack(&write_bg, &request_id_bg, "FAILED", &err).await;
+                }
+            }
+        });
         return;
     }
 

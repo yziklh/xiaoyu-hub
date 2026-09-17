@@ -24,6 +24,10 @@
 
         <!-- 喊话弹窗 -->
         <BroadcastOverlay />
+        <!-- 图片全屏展示 -->
+        <ImageOverlay />
+        <!-- 文件保存提示 -->
+        <FileReceivedToast />
       </div>
 
       <!-- 右侧垂直标签导航 -->
@@ -38,6 +42,8 @@ import Titlebar from './Titlebar.vue'
 import Sidebar from './Sidebar.vue'
 import MainFooter from './MainFooter.vue'
 import BroadcastOverlay from '@/components/features/BroadcastOverlay.vue'
+import ImageOverlay from '@/components/features/ImageOverlay.vue'
+import FileReceivedToast from '@/components/features/FileReceivedToast.vue'
 import { useDeviceStore } from '@/stores/device'
 import { onAgentCommandReceived } from '@/services/agentBridge'
 import { logger } from '@/utils/logger'

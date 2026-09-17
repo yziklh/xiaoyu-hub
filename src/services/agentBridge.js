@@ -70,3 +70,10 @@ export function onAgentCommandReceived(callback) {
     callback(event.payload)
   })
 }
+
+/** 监听附件下发结果（展示 / 保存） */
+export function onAgentPushAttachment(callback) {
+  return listen('agent:push_attachment', event => {
+    callback(event.payload)
+  })
+}
