@@ -7,6 +7,16 @@ import { getApiBase, getWsBase } from '@/config/api'
 
 /** 同步配置并启动/重启 Rust 后台 Agent */
 export async function configureAgent(options = {}) {
+  // 优先使用传入值，否则读取 Rust 侧持久化配置，避免重连时覆盖用户关闭的自启
+  let autoStart = options.autoStart
+  if (autoStart === undefined) {
+    try {
+      const saved = await invoke('agent_get_config')
+      autoStart = saved?.autoStart ?? true
+    } catch {
+      autoStart = true
+    }
+  }
   const config = {
     apiBaseUrl: getApiBase(),
     wsBaseUrl: getWsBase(),
@@ -15,7 +25,7 @@ export async function configureAgent(options = {}) {
     deviceName: options.deviceName || '教室设备',
     defaultVolume: options.defaultVolume ?? 80,
     defaultRate: options.defaultRate ?? 1.0,
-    autoStart: options.autoStart ?? true,
+    autoStart,
   }
   return invoke('agent_configure', { config })
 }

@@ -89,6 +89,7 @@
 // useAppStore, useSettingsStore 已通过 unplugin-auto-import 自动导入
 import { useToast } from '@composables/useToast'
 import { DEFAULT_API_BASE, getApiBase, setApiBase } from '@/config/api'
+import { clearCryptoConfigCache, fetchCryptoConfig } from '@/utils/crypto'
 import { useDeviceStore } from '@/stores/device'
 import { isAgentAutostartEnabled, setAgentAutostart, testAgentTts } from '@/services/agentBridge'
 
@@ -139,6 +140,9 @@ const saveApiBase = async () => {
     return
   }
   setApiBase(apiBase.value.trim())
+  // 切换后端地址后重新拉取加密配置
+  clearCryptoConfigCache()
+  await fetchCryptoConfig()
   toast.success('后端地址已保存')
   try {
     await deviceStore.bootstrap()

@@ -112,6 +112,12 @@ pub fn run() {
             logger::info("教室小助手启动");
 
             let agent_manager = AgentManager::new(app_data_dir);
+            // 启动时根据本地配置同步开机自启，避免仅首次绑定后才注册
+            if agent_manager.get_config().auto_start {
+                if let Err(e) = agent_manager.apply_autostart(app.handle(), true) {
+                    logger::warn(&format!("同步开机自启失败: {}", e));
+                }
+            }
             app.manage(agent_manager);
 
             let system_service = SystemService::new();

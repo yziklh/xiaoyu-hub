@@ -108,6 +108,19 @@ impl AgentManager {
         Ok(())
     }
 
+    /// 设置开机自启并持久化到 config.json
+    pub fn set_autostart(&self, app: &AppHandle, enabled: bool) -> Result<(), String> {
+        self.apply_autostart(app, enabled)?;
+        let mut config = self.get_config();
+        config.auto_start = enabled;
+        save_config(&self.app_data_dir, &config)?;
+        {
+            let mut current = self.current_config.lock().unwrap();
+            *current = config;
+        }
+        Ok(())
+    }
+
     pub fn is_autostart_enabled(&self, app: &AppHandle) -> Result<bool, String> {
         app.autolaunch().is_enabled().map_err(|e| e.to_string())
     }

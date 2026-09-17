@@ -40,7 +40,7 @@ pub fn agent_set_autostart(
     manager: State<'_, AgentManager>,
     enabled: bool,
 ) -> Result<(), String> {
-    manager.apply_autostart(&app, enabled)
+    manager.set_autostart(&app, enabled)
 }
 
 #[tauri::command]

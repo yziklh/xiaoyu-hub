@@ -6,6 +6,7 @@ import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import './assets/styles/global.css'
 import { logger } from './utils/logger'
 import { handleError } from './utils/errorHandler'
+import { fetchCryptoConfig } from './utils/crypto'
 // useAppStore, useSettingsStore 已通过 unplugin-auto-import 自动导入
 
 // 开发环境加载独立 Vue DevTools 连接脚本
@@ -62,6 +63,11 @@ const settingsStore = useSettingsStore()
 
 // 初始化设置（持久化插件会自动加载数据，这里只需要应用到 DOM）
 settingsStore.initializeSettings()
+
+// 预拉取后端加密配置（根据系统 security 配置决定是否启用）
+fetchCryptoConfig().catch(err => {
+  logger.warn('Failed to fetch crypto config:', err)
+})
 
 // 初始化应用数据
 appStore.initialize().catch(err => {

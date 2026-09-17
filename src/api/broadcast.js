@@ -2,6 +2,7 @@
  * 设备端 HTTP 接口
  */
 import { getApiBase } from '@/config/api'
+import { isAesEncryptedData, decryptResponseData } from '@/utils/crypto'
 
 async function request(path, options = {}) {
   const base = getApiBase()
@@ -13,7 +14,13 @@ async function request(path, options = {}) {
   if (data.code !== 200 && data.code !== 0) {
     throw new Error(data.message || data.msg || '请求失败')
   }
-  return data.data
+
+  // 后端开启接口加密时，自动解密响应 data
+  let result = data.data
+  if (isAesEncryptedData(result)) {
+    result = await decryptResponseData(result)
+  }
+  return result
 }
 
 /** 申请绑定码 */
