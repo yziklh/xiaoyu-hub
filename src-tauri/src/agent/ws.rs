@@ -1,7 +1,9 @@
 use crate::agent::attachment;
 use crate::agent::config::AgentConfig;
 use crate::agent::idempotency::IdempotencyStore;
+use crate::agent::log_upload;
 use crate::agent::logger;
+use crate::agent::snapshot;
 use crate::agent::tts;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
@@ -28,6 +30,24 @@ fn emit_status(app: &AppHandle, status: &str, connection_status: &Arc<StdMutex<S
         *guard = status.to_string();
     }
     let _ = app.emit("agent:connection_status", status);
+}
+
+async fn send_heartbeat(
+    write: &Arc<Mutex<WsWriter>>,
+    config: &AgentConfig,
+    connection_status: &str,
+) -> Result<(), String> {
+    let payload = json!({
+        "type": "HEARTBEAT",
+        "timestamp": chrono::Utc::now().timestamp_millis(),
+        "snapshot": snapshot::build_snapshot(config, connection_status),
+    });
+    let text = serde_json::to_string(&payload).map_err(|e| e.to_string())?;
+    let mut guard = write.lock().await;
+    guard
+        .send(Message::Text(text))
+        .await
+        .map_err(|_| "心跳发送失败".to_string())
 }
 
 fn build_ws_url(config: &AgentConfig) -> String {
@@ -211,6 +231,10 @@ async fn run_session(
 
     logger::info("WebSocket 已连接");
     emit_status(&app, "online", &connection_status);
+    // 连接建立后立即上报一次快照，便于管理端尽快看到版本等信息
+    if send_heartbeat(&write, &config, "online").await.is_err() {
+        return Err("首次心跳发送失败".to_string());
+    }
 
     let mut heartbeat = tokio::time::interval(Duration::from_secs(HEARTBEAT_INTERVAL_SECS));
     heartbeat.tick().await;
@@ -225,12 +249,8 @@ async fn run_session(
 
         tokio::select! {
             _ = heartbeat.tick() => {
-                let payload = json!({ "type": "HEARTBEAT", "timestamp": chrono::Utc::now().timestamp_millis() });
-                if let Ok(text) = serde_json::to_string(&payload) {
-                    let mut guard = write.lock().await;
-                    if guard.send(Message::Text(text)).await.is_err() {
-                        return Err("心跳发送失败".to_string());
-                    }
+                if send_heartbeat(&write, &config, "online").await.is_err() {
+                    return Err("心跳发送失败".to_string());
                 }
             }
             incoming = read.next() => {
@@ -264,6 +284,16 @@ pub async fn run_agent_loop(
     idempotency: IdempotencyStore,
     connection_status: Arc<StdMutex<String>>,
 ) {
+    snapshot::init_start_time();
+    let upload_stop = stop.clone();
+    let upload_config = config.clone();
+    let app_data_dir = crate::agent::paths::app_data_dir();
+    tokio::spawn(log_upload::run_upload_loop(
+        upload_config,
+        app_data_dir,
+        upload_stop,
+    ));
+
     let mut attempt: u32 = 0;
     loop {
         if stop.load(Ordering::SeqCst) {
@@ -299,6 +329,7 @@ pub async fn run_agent_loop(
         let delay = std::cmp::min(MAX_RECONNECT_DELAY_SECS, 1u64 << attempt.min(6));
         logger::info(&format!("{delay}s 后重连 WebSocket"));
         emit_status(&app, "reconnecting", &connection_status);
+        // 重连等待期间也按 reconnecting 状态上报，便于管理端识别
 
         let mut waited = 0u64;
         while waited < delay {

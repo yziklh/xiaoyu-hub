@@ -104,6 +104,7 @@ pub fn run() {
             let app_data_dir = paths::app_data_dir();
             let log_dir = app_data_dir.join("logs");
             logger::init(log_dir);
+            agent::snapshot::init_start_time();
             logger::info("教室小助手启动");
 
             let agent_manager = AgentManager::new(app_data_dir);
