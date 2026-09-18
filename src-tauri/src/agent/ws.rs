@@ -8,6 +8,7 @@ use serde_json::{json, Value};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
+    Mutex as StdMutex,
 };
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
@@ -22,7 +23,10 @@ type WsWriter = futures_util::stream::SplitSink<
     Message,
 >;
 
-fn emit_status(app: &AppHandle, status: &str) {
+fn emit_status(app: &AppHandle, status: &str, connection_status: &Arc<StdMutex<String>>) {
+    if let Ok(mut guard) = connection_status.lock() {
+        *guard = status.to_string();
+    }
     let _ = app.emit("agent:connection_status", status);
 }
 
@@ -189,6 +193,7 @@ async fn run_session(
     config: AgentConfig,
     stop: Arc<AtomicBool>,
     idempotency: IdempotencyStore,
+    connection_status: Arc<StdMutex<String>>,
 ) -> Result<(), String> {
     if config.device_token.is_empty() {
         return Err("设备未绑定，缺少 token".to_string());
@@ -196,7 +201,7 @@ async fn run_session(
 
     let ws_url = build_ws_url(&config);
     logger::info(&format!("连接 WebSocket: {ws_url}"));
-    emit_status(&app, "connecting");
+    emit_status(&app, "connecting", &connection_status);
 
     let (ws_stream, _) = connect_async(&ws_url)
         .await
@@ -205,7 +210,7 @@ async fn run_session(
     let write = Arc::new(Mutex::new(write));
 
     logger::info("WebSocket 已连接");
-    emit_status(&app, "online");
+    emit_status(&app, "online", &connection_status);
 
     let mut heartbeat = tokio::time::interval(Duration::from_secs(HEARTBEAT_INTERVAL_SECS));
     heartbeat.tick().await;
@@ -214,7 +219,7 @@ async fn run_session(
         if stop.load(Ordering::SeqCst) {
             let mut guard = write.lock().await;
             let _ = guard.close().await;
-            emit_status(&app, "offline");
+            emit_status(&app, "offline", &connection_status);
             return Ok(());
         }
 
@@ -257,15 +262,24 @@ pub async fn run_agent_loop(
     config: AgentConfig,
     stop: Arc<AtomicBool>,
     idempotency: IdempotencyStore,
+    connection_status: Arc<StdMutex<String>>,
 ) {
     let mut attempt: u32 = 0;
     loop {
         if stop.load(Ordering::SeqCst) {
-            emit_status(&app, "offline");
+            emit_status(&app, "offline", &connection_status);
             break;
         }
 
-        match run_session(app.clone(), config.clone(), stop.clone(), idempotency.clone()).await {
+        match run_session(
+            app.clone(),
+            config.clone(),
+            stop.clone(),
+            idempotency.clone(),
+            connection_status.clone(),
+        )
+        .await
+        {
             Ok(_) => {
                 if stop.load(Ordering::SeqCst) {
                     break;
@@ -277,19 +291,19 @@ pub async fn run_agent_loop(
         }
 
         if stop.load(Ordering::SeqCst) {
-            emit_status(&app, "offline");
+            emit_status(&app, "offline", &connection_status);
             break;
         }
 
         attempt = attempt.saturating_add(1);
         let delay = std::cmp::min(MAX_RECONNECT_DELAY_SECS, 1u64 << attempt.min(6));
         logger::info(&format!("{delay}s 后重连 WebSocket"));
-        emit_status(&app, "reconnecting");
+        emit_status(&app, "reconnecting", &connection_status);
 
         let mut waited = 0u64;
         while waited < delay {
             if stop.load(Ordering::SeqCst) {
-                emit_status(&app, "offline");
+                emit_status(&app, "offline", &connection_status);
                 return;
             }
             tokio::time::sleep(Duration::from_secs(1)).await;

@@ -7,11 +7,10 @@ import { getApiBase, getWsBase } from '@/config/api'
 
 /** 同步配置并启动/重启 Rust 后台 Agent */
 export async function configureAgent(options = {}) {
-  // 优先使用传入值，否则读取 Rust 侧持久化配置，避免重连时覆盖用户关闭的自启
   let autoStart = options.autoStart
   if (autoStart === undefined) {
     try {
-      const saved = await invoke('agent_get_config')
+      const saved = await getAgentSettings()
       autoStart = saved?.autoStart ?? true
     } catch {
       autoStart = true
@@ -28,6 +27,16 @@ export async function configureAgent(options = {}) {
     autoStart,
   }
   return invoke('agent_configure', { config })
+}
+
+/** 读取 Rust 持久化配置（不含 Token） */
+export function getAgentSettings() {
+  return invoke('agent_get_settings')
+}
+
+/** 读取 Rust 完整配置（含 Token，仅用于启动时恢复连接） */
+export function getAgentConfig() {
+  return invoke('agent_get_config')
 }
 
 /** 停止 Rust 后台 Agent */

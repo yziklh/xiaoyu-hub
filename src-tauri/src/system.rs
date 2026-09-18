@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SystemInfo {
@@ -18,15 +18,13 @@ impl SystemService {
     }
 
     pub fn read_file(&self, path: &str) -> Result<String, String> {
-        fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read file: {}", e))
+        fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))
     }
-    
+
     pub fn write_file(&self, path: &str, content: &str) -> Result<(), String> {
-        fs::write(path, content)
-            .map_err(|e| format!("Failed to write file: {}", e))
+        fs::write(path, content).map_err(|e| format!("Failed to write file: {}", e))
     }
-    
+
     pub fn file_exists(&self, path: &str) -> bool {
         Path::new(path).exists()
     }
@@ -59,7 +57,10 @@ impl SystemService {
             if let Ok(content) = fs::read_to_string("/etc/os-release") {
                 for line in content.lines() {
                     if line.starts_with("PRETTY_NAME=") {
-                        return line.replace("PRETTY_NAME=", "").trim_matches('"').to_string();
+                        return line
+                            .replace("PRETTY_NAME=", "")
+                            .trim_matches('"')
+                            .to_string();
                     }
                 }
             }
@@ -68,4 +69,3 @@ impl SystemService {
         "Unknown".to_string()
     }
 }
-

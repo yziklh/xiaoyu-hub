@@ -1,5 +1,5 @@
+use crate::system::{SystemInfo, SystemService};
 use tauri::State;
-use crate::system::{SystemService, SystemInfo};
 
 #[tauri::command]
 pub fn system_read_file(path: String, system: State<SystemService>) -> Result<String, String> {
@@ -7,7 +7,11 @@ pub fn system_read_file(path: String, system: State<SystemService>) -> Result<St
 }
 
 #[tauri::command]
-pub fn system_write_file(path: String, content: String, system: State<SystemService>) -> Result<(), String> {
+pub fn system_write_file(
+    path: String,
+    content: String,
+    system: State<SystemService>,
+) -> Result<(), String> {
     system.write_file(&path, &content)
 }
 

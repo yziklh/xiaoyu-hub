@@ -36,7 +36,10 @@ struct CheckUpdateData {
 }
 
 /// 调用管理端 check-update 接口
-pub async fn check_update(config: &AgentConfig, current_version: &str) -> Result<UpdateCheckResult, String> {
+pub async fn check_update(
+    config: &AgentConfig,
+    current_version: &str,
+) -> Result<UpdateCheckResult, String> {
     let url = format!(
         "{}/api/device/check-update?version={}&platform=windows",
         config.api_base_url.trim_end_matches('/'),
@@ -60,7 +63,10 @@ pub async fn check_update(config: &AgentConfig, current_version: &str) -> Result
         .map_err(|e| format!("解析更新响应失败: {e}"))?;
 
     if body.code != 200 && body.code != 0 {
-        let msg = body.message.or(body.msg).unwrap_or_else(|| "检查更新失败".to_string());
+        let msg = body
+            .message
+            .or(body.msg)
+            .unwrap_or_else(|| "检查更新失败".to_string());
         return Err(msg);
     }
 
@@ -114,10 +120,13 @@ pub async fn download_and_install(
         .map_err(|e| format!("读取更新包失败: {e}"))?;
     let downloaded = bytes.len() as u64;
 
-    let _ = app.emit("updater:progress", serde_json::json!({
-        "downloaded": downloaded,
-        "total": total.max(downloaded)
-    }));
+    let _ = app.emit(
+        "updater:progress",
+        serde_json::json!({
+            "downloaded": downloaded,
+            "total": total.max(downloaded)
+        }),
+    );
 
     std::fs::create_dir_all(app_data_dir).map_err(|e| e.to_string())?;
     let file_name = download_url

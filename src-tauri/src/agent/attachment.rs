@@ -41,13 +41,7 @@ fn metadata_path() -> PathBuf {
 
 fn sanitize_filename(name: &str) -> String {
     name.chars()
-        .map(|c| {
-            if r#"\/:*?"<>|"#.contains(c) {
-                '_'
-            } else {
-                c
-            }
-        })
+        .map(|c| if r#"\/:*?"<>|"#.contains(c) { '_' } else { c })
         .collect::<String>()
         .trim()
         .to_string()
@@ -94,7 +88,11 @@ fn resolve_file_url(config: &AgentConfig, url: &str) -> String {
 }
 
 /// HTTP 下载文件到本地目录
-pub async fn download_file(config: &AgentConfig, url: &str, file_name: &str) -> Result<PathBuf, String> {
+pub async fn download_file(
+    config: &AgentConfig,
+    url: &str,
+    file_name: &str,
+) -> Result<PathBuf, String> {
     let dir = get_download_dir();
     std::fs::create_dir_all(&dir).map_err(|e| format!("创建目录失败: {e}"))?;
     let target = unique_target_path(&dir, file_name);
@@ -174,10 +172,7 @@ pub async fn handle_push_attachment(
         .get("fileName")
         .and_then(|v| v.as_str())
         .unwrap_or("attachment");
-    let mime_type = data
-        .get("mimeType")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let mime_type = data.get("mimeType").and_then(|v| v.as_str()).unwrap_or("");
     let sender_name = data
         .get("senderName")
         .and_then(|v| v.as_str())

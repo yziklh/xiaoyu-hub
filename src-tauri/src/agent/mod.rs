@@ -8,7 +8,7 @@ pub mod tts;
 pub mod updater;
 pub mod ws;
 
-use config::{load_config, save_config, AgentConfig};
+use config::{load_config, normalize_api_base, save_config, to_ws_base, AgentConfig, AgentSettings};
 use idempotency::IdempotencyStore;
 use std::path::PathBuf;
 use std::sync::{
@@ -24,7 +24,7 @@ pub struct AgentManager {
     app_data_dir: PathBuf,
     stop_flag: Arc<AtomicBool>,
     runtime_handle: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
-    connection_status: Mutex<String>,
+    connection_status: Arc<Mutex<String>>,
     current_config: Mutex<AgentConfig>,
     /// 指令幂等存储
     idempotency: IdempotencyStore,
@@ -37,7 +37,7 @@ impl AgentManager {
             app_data_dir,
             stop_flag: Arc::new(AtomicBool::new(false)),
             runtime_handle: Mutex::new(None),
-            connection_status: Mutex::new("offline".to_string()),
+            connection_status: Arc::new(Mutex::new("offline".to_string())),
             current_config: Mutex::new(config),
             idempotency: IdempotencyStore::new(MAX_PROCESSED_REQUESTS),
         }
@@ -55,12 +55,23 @@ impl AgentManager {
         self.connection_status.lock().unwrap().clone()
     }
 
-    pub fn configure(&self, app: &AppHandle, config: AgentConfig) -> Result<(), String> {
+    pub fn get_settings(&self) -> AgentSettings {
+        AgentSettings::from(&self.get_config())
+    }
+
+    pub fn has_device_token(&self) -> bool {
+        !self.get_config().device_token.is_empty()
+    }
+
+    pub fn configure(&self, app: &AppHandle, mut config: AgentConfig) -> Result<(), String> {
+        config.api_base_url = normalize_api_base(&config.api_base_url)?;
+        config.ws_base_url = if config.ws_base_url.trim().is_empty() {
+            to_ws_base(&config.api_base_url)?
+        } else {
+            config.ws_base_url.trim().trim_end_matches('/').to_string()
+        };
         save_config(&self.app_data_dir, &config)?;
-        {
-            let mut current = self.current_config.lock().unwrap();
-            *current = config.clone();
-        }
+        *self.current_config.lock().unwrap() = config.clone();
         self.apply_autostart(app, config.auto_start)?;
         self.restart(app, config)
     }
@@ -77,8 +88,9 @@ impl AgentManager {
         let stop = self.stop_flag.clone();
         let app_handle = app.clone();
         let idempotency = self.idempotency.clone();
+        let connection_status = self.connection_status.clone();
         let handle = tauri::async_runtime::spawn(async move {
-            ws::run_agent_loop(app_handle, config, stop, idempotency).await;
+            ws::run_agent_loop(app_handle, config, stop, idempotency, connection_status).await;
         });
         *self.runtime_handle.lock().unwrap() = Some(handle);
         Ok(())
@@ -115,10 +127,7 @@ impl AgentManager {
         let mut config = self.get_config();
         config.auto_start = enabled;
         save_config(&self.app_data_dir, &config)?;
-        {
-            let mut current = self.current_config.lock().unwrap();
-            *current = config;
-        }
+        *self.current_config.lock().unwrap() = config;
         Ok(())
     }
 

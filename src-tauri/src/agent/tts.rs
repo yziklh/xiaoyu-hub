@@ -1,15 +1,20 @@
 use std::process::{Command, Stdio};
-use std::sync::Mutex;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Mutex,
+};
 use std::thread;
 use std::time::Duration;
 
 static SPEAKING: Mutex<bool> = Mutex::new(false);
+static PLAYBACK_GENERATION: AtomicU64 = AtomicU64::new(0);
 
 #[cfg(target_os = "macos")]
 static SAY_CHILD: Mutex<Option<std::process::Child>> = Mutex::new(None);
 
 /// 停止当前播报
 pub fn stop_speak() {
+    PLAYBACK_GENERATION.fetch_add(1, Ordering::SeqCst);
     if let Ok(mut guard) = SPEAKING.lock() {
         *guard = false;
     }
@@ -30,36 +35,57 @@ pub fn stop_speak() {
     }
 }
 
+/** 标记一个新的播放请求，旧请求会在自身的播放循环中停止。 */
+pub fn begin_playback() -> u64 {
+    let generation = PLAYBACK_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
+    if let Ok(mut guard) = SPEAKING.lock() {
+        *guard = true;
+    }
+    generation
+}
+
 /// 文字转语音
 pub fn speak(text: &str, volume: u32, rate: f32) -> Result<(), String> {
+    let generation = begin_playback();
+    speak_for_generation(text, volume, rate, generation)
+}
+
+pub fn speak_for_generation(
+    text: &str,
+    volume: u32,
+    rate: f32,
+    generation: u64,
+) -> Result<(), String> {
     let content = text.trim();
     if content.is_empty() {
         return Ok(());
     }
 
-    if let Ok(mut guard) = SPEAKING.lock() {
-        *guard = true;
-    }
-
     let result = {
         #[cfg(target_os = "windows")]
         {
-            windows_sapi::speak(content, volume, rate)
+            windows_sapi::speak(content, volume, rate, generation)
         }
         #[cfg(target_os = "macos")]
         {
-            macos_say::speak(content, volume, rate)
+            macos_say::speak(content, volume, rate, generation)
         }
         #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
         {
-            generic_tts::speak(content, volume, rate)
+            generic_tts::speak(content, volume, rate, generation)
         }
     };
 
-    if let Ok(mut guard) = SPEAKING.lock() {
-        *guard = false;
+    if is_playback_current(generation) {
+        if let Ok(mut guard) = SPEAKING.lock() {
+            *guard = false;
+        }
     }
     result
+}
+
+pub fn is_playback_current(generation: u64) -> bool {
+    PLAYBACK_GENERATION.load(Ordering::SeqCst) == generation
 }
 
 /// 选择中文语音（Windows SAPI / 通用 tts）
@@ -106,7 +132,7 @@ mod windows_sapi {
         Ok(())
     }
 
-    pub fn speak(text: &str, volume: u32, rate: f32) -> Result<(), String> {
+    pub fn speak(text: &str, volume: u32, rate: f32, generation: u64) -> Result<(), String> {
         let mut tts = Tts::default().map_err(|e| format!("初始化 TTS 失败: {e}"))?;
 
         if let Some(voice) = pick_chinese_voice(&tts) {
@@ -122,11 +148,9 @@ mod windows_sapi {
             .map_err(|e| format!("播报失败: {e}"))?;
 
         loop {
-            if let Ok(guard) = SPEAKING.lock() {
-                if !*guard {
-                    let _ = tts.stop();
-                    return Ok(());
-                }
+            if !is_playback_current(generation) {
+                let _ = tts.stop();
+                return Err("播放已取消".to_string());
             }
             match tts.is_speaking() {
                 Ok(false) => break,
@@ -150,7 +174,7 @@ mod macos_say {
         CHINESE_VOICES[0]
     }
 
-    pub fn speak(text: &str, volume: u32, rate: f32) -> Result<(), String> {
+    pub fn speak(text: &str, volume: u32, rate: f32, generation: u64) -> Result<(), String> {
         if let Ok(mut child_guard) = SAY_CHILD.lock() {
             if let Some(mut c) = child_guard.take() {
                 let _ = c.kill();
@@ -163,7 +187,7 @@ mod macos_say {
 
         let mut last_err = String::new();
         for try_voice in CHINESE_VOICES {
-            match spawn_say(try_voice, wpm, text) {
+            match spawn_say(try_voice, wpm, text, generation) {
                 Ok(()) => return Ok(()),
                 Err(err) => last_err = err,
             }
@@ -175,7 +199,7 @@ mod macos_say {
         })
     }
 
-    fn spawn_say(voice: &str, wpm: u32, text: &str) -> Result<(), String> {
+    fn spawn_say(voice: &str, wpm: u32, text: &str, generation: u64) -> Result<(), String> {
         let child = Command::new("say")
             .env("LANG", "zh_CN.UTF-8")
             .arg("-v")
@@ -194,15 +218,13 @@ mod macos_say {
         }
 
         loop {
-            if let Ok(guard) = SPEAKING.lock() {
-                if !*guard {
-                    if let Ok(mut child_guard) = SAY_CHILD.lock() {
-                        if let Some(mut c) = child_guard.take() {
-                            let _ = c.kill();
-                        }
+            if !is_playback_current(generation) {
+                if let Ok(mut child_guard) = SAY_CHILD.lock() {
+                    if let Some(mut c) = child_guard.take() {
+                        let _ = c.kill();
                     }
-                    return Ok(());
                 }
+                return Err("播放已取消".to_string());
             }
 
             let finished = {
@@ -239,7 +261,7 @@ mod generic_tts {
     use super::*;
     use tts::Tts;
 
-    pub fn speak(text: &str, volume: u32, rate: f32) -> Result<(), String> {
+    pub fn speak(text: &str, volume: u32, rate: f32, generation: u64) -> Result<(), String> {
         let mut tts = Tts::default().map_err(|e| format!("初始化 TTS 失败: {e}"))?;
 
         if let Some(voice) = pick_chinese_voice(&tts) {
@@ -253,11 +275,9 @@ mod generic_tts {
             .map_err(|e| format!("播报失败: {e}"))?;
 
         loop {
-            if let Ok(guard) = SPEAKING.lock() {
-                if !*guard {
-                    let _ = tts.stop();
-                    return Ok(());
-                }
+            if !is_playback_current(generation) {
+                let _ = tts.stop();
+                return Err("播放已取消".to_string());
             }
             match tts.is_speaking() {
                 Ok(false) => break,

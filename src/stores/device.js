@@ -1,21 +1,20 @@
 /**
- * 设备端状态：绑定、连接、指令
+ * 设备绑定与连接状态
  */
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { createBindCode, getBindStatus, getBindStatusByCode, getRecentCommands } from '@/api/broadcast'
-import { configureAgent, stopAgent, onAgentConnectionStatus } from '@/services/agentBridge'
+import { configureAgent, getAgentConfig, onAgentConnectionStatus, stopAgent } from '@/services/agentBridge'
 import { logger } from '@/utils/logger'
 import { buildNotifyTitle, mapCommandStatus } from '@/utils/broadcast'
 
-/** 避免重复注册连接状态监听 */
 let connectionListenerRegistered = false
 
 function createDeviceId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID()
   }
-  return `device-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
 export const useDeviceStore = defineStore(
@@ -27,61 +26,35 @@ export const useDeviceStore = defineStore(
     const deptName = ref('')
     const bindCode = ref('')
     const bindCodeExpire = ref('')
-    const connectionStatus = ref('offline') // offline | connecting | online | reconnecting
+    const bound = ref(false)
+    const connectionStatus = ref('offline')
     const lastCommand = ref(null)
     const pollTimer = ref(null)
-    /** 最近动态列表 */
     const activities = ref([])
-    /** 今日统计 */
     const stats = ref({ notificationCount: 0, ttsCount: 0 })
-    /** 最后同步时间 */
     const lastSyncTime = ref('')
-    /** 本次启动时间，用于计算在线时长 */
     const sessionStartAt = ref(Date.now())
 
-    const isBound = computed(() => !!deviceToken.value)
+    const isBound = computed(() => bound.value)
     const isOnline = computed(() => connectionStatus.value === 'online')
+
+    function formatDateTime(date) {
+      const pad = value => String(value).padStart(2, '0')
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+    }
+
+    function formatActivityTime(date) {
+      const now = new Date()
+      const pad = value => String(value).padStart(2, '0')
+      const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`
+      return now.toDateString() === date.toDateString() ? time : `昨天 ${time}`
+    }
 
     function ensureDeviceId() {
       if (!deviceId.value) {
         deviceId.value = createDeviceId()
       }
       return deviceId.value
-    }
-
-    async function requestBindCode() {
-      const id = ensureDeviceId()
-      const result = await createBindCode(id, deviceName.value)
-      // 已绑定且在线：直接恢复连接，不重复发码
-      if (result?.alreadyBound) {
-        bindCode.value = ''
-        stopBindPolling()
-        await checkBindStatus()
-        return result
-      }
-      bindCode.value = result.bindCode
-      bindCodeExpire.value = result.expireTime
-      startBindPolling()
-      return result
-    }
-
-    /** 离线设备申请重新绑定码，保留 deviceId，供小程序刷新 Token */
-    async function requestRebindCode() {
-      const id = ensureDeviceId()
-      if (!deviceToken.value) {
-        return requestBindCode()
-      }
-      stopBindPolling()
-      const result = await createBindCode(id, deviceName.value)
-      if (result?.alreadyBound) {
-        bindCode.value = ''
-        await checkBindStatus()
-        return result
-      }
-      bindCode.value = result.bindCode
-      bindCodeExpire.value = result.expireTime
-      startBindPolling()
-      return result
     }
 
     function stopBindPolling() {
@@ -93,117 +66,81 @@ export const useDeviceStore = defineStore(
 
     function startBindPolling() {
       stopBindPolling()
-      pollTimer.value = setInterval(async () => {
-        try {
-          await checkBindStatus()
-        } catch (error) {
-          logger.warn('轮询绑定状态失败:', error)
-        }
+      pollTimer.value = setInterval(() => {
+        checkBindStatus().catch(error => logger.warn('轮询绑定状态失败:', error))
       }, 3000)
     }
 
-    async function checkBindStatus() {
-      const waitingCode = bindCode.value
-      const status = waitingCode ? await getBindStatusByCode(waitingCode) : await getBindStatus(ensureDeviceId())
+    async function requestBindCode() {
+      const result = await createBindCode(ensureDeviceId(), deviceName.value)
+      if (result.alreadyBound) {
+        throw new Error('设备已绑定且在线，无需重复申请绑定码')
+      }
+      deviceId.value = result.deviceId || deviceId.value
+      bindCode.value = result.bindCode || ''
+      bindCodeExpire.value = result.expireTime || ''
+      bound.value = false
+      deviceToken.value = ''
+      startBindPolling()
+      return result
+    }
 
+    async function requestRebindCode() {
+      await stopAgent()
+      bound.value = false
+      deviceToken.value = ''
+      return requestBindCode()
+    }
+
+    async function checkBindStatus() {
+      const status = bindCode.value
+        ? await getBindStatusByCode(bindCode.value)
+        : await getBindStatus(deviceId.value)
+
+      // 服务端 bound=true 但未返回 Token 时继续轮询，避免卡死在「已绑定但离线」
       if (!status?.bound || !status.deviceToken) {
         return status
       }
 
-      const previousToken = deviceToken.value
-      const tokenChanged = !!previousToken && previousToken !== status.deviceToken
-      const firstBind = !previousToken
-
-      // 同步服务端真实 deviceId（重新绑定后可能与本地不同）
-      if (status.deviceId) {
-        deviceId.value = status.deviceId
-      }
       deviceToken.value = status.deviceToken
+      deviceId.value = status.deviceId || deviceId.value
+      deviceName.value = status.deviceName || deviceName.value
       deptName.value = status.deptName || ''
-      if (status.deviceName) {
-        deviceName.value = status.deviceName
-      }
-
-      // 正在等待小程序输入绑码：Token 未刷新前继续轮询
-      if (waitingCode && !firstBind && !tokenChanged) {
-        return status
-      }
-
-      bindCode.value = ''
+      bound.value = true
       stopBindPolling()
-
-      if (tokenChanged) {
-        await stopAgent()
-      }
+      bindCode.value = ''
       await connectWs()
       lastSyncTime.value = formatDateTime(new Date())
-      if (firstBind || tokenChanged) {
-        addActivity(
-          tokenChanged ? '设备重新绑定成功' : '设备绑定成功',
-          `${deptName.value || deviceName.value} 已连接`,
-          '运行正常'
-        )
-      }
+      addActivity('设备绑定成功', `${deviceName.value} 已连接`, '运行正常')
       await syncActivities()
-      logger.info(tokenChanged ? '设备重新绑定成功' : '设备绑定成功')
       return status
     }
 
-    function formatDateTime(date) {
-      const pad = n => String(n).padStart(2, '0')
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
-    }
-
-    function formatActivityTime(date) {
-      const now = new Date()
-      const isToday =
-        date.getFullYear() === now.getFullYear() &&
-        date.getMonth() === now.getMonth() &&
-        date.getDate() === now.getDate()
-      const pad = n => String(n).padStart(2, '0')
-      const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`
-      if (isToday) return time
-      return `昨天 ${time}`
-    }
-
-    function formatActivityTimeFromSendTime(sendTime) {
-      if (!sendTime) return formatActivityTime(new Date())
-      const normalized = String(sendTime).includes('T') ? sendTime : String(sendTime).replace(' ', 'T')
-      const date = new Date(normalized)
-      if (Number.isNaN(date.getTime())) return formatActivityTime(new Date())
-      return formatActivityTime(date)
-    }
-
-    /** 从服务端同步指令历史（含发送人） */
     async function syncActivities() {
-      if (!deviceId.value || !deviceToken.value) return
-
+      if (!bound.value || !deviceToken.value) return
       try {
         const list = await getRecentCommands(deviceId.value, deviceToken.value, 20)
         const systemItems = activities.value.filter(item => item.kind === 'system')
-        const commandItems = (list || []).map(cmd => {
-          const senderName = cmd.senderName || ''
+        const commandItems = (list || []).map(command => {
+          const date = command.sendTime ? new Date(String(command.sendTime).replace(' ', 'T')) : new Date()
           return {
-            id: cmd.requestId || `${cmd.sendTime}-${cmd.text}`,
-            requestId: cmd.requestId,
+            id: command.requestId || `${command.sendTime}-${command.text}`,
+            requestId: command.requestId,
             kind: 'command',
-            time: formatActivityTimeFromSendTime(cmd.sendTime),
-            title: buildNotifyTitle(senderName, '课堂通知'),
-            content: cmd.text || '—',
-            status: mapCommandStatus(cmd.status),
-            senderName,
+            time: Number.isNaN(date.getTime()) ? formatActivityTime(new Date()) : formatActivityTime(date),
+            title: buildNotifyTitle(command.senderName || '', '课堂通知'),
+            content: command.text || '—',
+            status: mapCommandStatus(command.status),
+            senderName: command.senderName || '',
           }
         })
-
         activities.value = [...systemItems, ...commandItems].slice(0, 50)
-
-        if (commandItems.length > 0) {
-          const latest = commandItems[0]
+        if (commandItems[0]) {
           lastCommand.value = {
             type: 'TTS',
-            text: latest.content,
-            senderName: latest.senderName,
-            time: latest.time,
+            text: commandItems[0].content,
+            senderName: commandItems[0].senderName,
+            time: commandItems[0].time,
           }
         }
       } catch (error) {
@@ -211,7 +148,6 @@ export const useDeviceStore = defineStore(
       }
     }
 
-    /** 追加一条系统动态（绑定、启动等） */
     function addActivity(title, content, status = '执行成功', senderName = '') {
       activities.value.unshift({
         id: `${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
@@ -220,15 +156,13 @@ export const useDeviceStore = defineStore(
         title,
         content,
         status,
-        senderName: senderName || '',
+        senderName,
       })
-      if (activities.value.length > 50) {
-        activities.value.length = 50
-      }
+      activities.value = activities.value.slice(0, 50)
     }
 
     async function connectWs() {
-      if (!deviceToken.value) return
+      if (!bound.value || !deviceToken.value) return
       await configureAgent({
         deviceId: deviceId.value,
         deviceToken: deviceToken.value,
@@ -236,28 +170,8 @@ export const useDeviceStore = defineStore(
       })
     }
 
-    /** 重新连接：先停后启，避免僵尸连接 */
     async function reconnect() {
-      if (!deviceToken.value) {
-        throw new Error('设备未绑定')
-      }
-      try {
-        const status = await getBindStatus(deviceId.value)
-        if (status?.bound && status.deviceToken) {
-          deviceToken.value = status.deviceToken
-          if (status.deviceName) deviceName.value = status.deviceName
-          if (status.deptName) deptName.value = status.deptName
-        } else {
-          deviceToken.value = ''
-          throw new Error('设备已在服务端解绑，请重新绑定')
-        }
-      } catch (error) {
-        if (deviceToken.value) {
-          logger.warn('同步绑定状态失败，尝试使用本地 Token 重连:', error)
-        } else {
-          throw error
-        }
-      }
+      if (!bound.value || !deviceToken.value) throw new Error('设备未绑定')
       await stopAgent()
       await connectWs()
     }
@@ -267,14 +181,63 @@ export const useDeviceStore = defineStore(
       connectionStatus.value = 'offline'
     }
 
-    /** 解绑并重新获取绑定码（生成新 deviceId，避免与已绑定记录冲突） */
     async function resetBinding() {
-      disconnectWs()
+      await stopAgent()
       deviceToken.value = ''
-      deptName.value = ''
+      bound.value = false
       bindCode.value = ''
-      deviceId.value = createDeviceId()
+      deptName.value = ''
+      await configureAgent({
+        deviceId: deviceId.value,
+        deviceToken: '',
+        deviceName: deviceName.value,
+      })
       await requestBindCode()
+    }
+
+    function setDeviceName(name) {
+      deviceName.value = name || '教室设备'
+    }
+
+    async function recordCommand(envelope) {
+      lastSyncTime.value = formatDateTime(new Date())
+      if (envelope.type === 'TTS') stats.value.ttsCount += 1
+      if (envelope.type !== 'SHOW_MESSAGE') stats.value.notificationCount += 1
+      await syncActivities()
+    }
+
+    /** 应用 Rust 侧已持久化的绑定凭据（config.json） */
+    async function syncFromRustConfig() {
+      try {
+        const config = await getAgentConfig()
+        if (!config?.deviceToken) return false
+        deviceId.value = config.deviceId || deviceId.value
+        deviceToken.value = config.deviceToken
+        deviceName.value = config.deviceName || deviceName.value
+        bound.value = true
+        return true
+      } catch (error) {
+        logger.warn('读取 Rust 绑定配置失败:', error)
+        return false
+      }
+    }
+
+    /** 通过 deviceId 向后端恢复 Token（localStorage 丢失时兜底） */
+    async function recoverBindingFromServer() {
+      if (!deviceId.value) return false
+      try {
+        const status = await getBindStatus(deviceId.value)
+        if (!status?.bound || !status.deviceToken) return false
+        deviceToken.value = status.deviceToken
+        deviceId.value = status.deviceId || deviceId.value
+        deviceName.value = status.deviceName || deviceName.value
+        deptName.value = status.deptName || ''
+        bound.value = true
+        return true
+      } catch (error) {
+        logger.warn('从服务端恢复绑定失败:', error)
+        return false
+      }
     }
 
     async function bootstrap() {
@@ -289,54 +252,29 @@ export const useDeviceStore = defineStore(
         })
       }
 
-      ensureDeviceId()
       sessionStartAt.value = Date.now()
 
-      try {
-        const status = await getBindStatus(deviceId.value)
-        if (status?.bound && status.deviceToken) {
-          deviceToken.value = status.deviceToken
-          deptName.value = status.deptName || ''
-          if (status.deviceName) {
-            deviceName.value = status.deviceName
-          }
-          await connectWs()
-          await syncActivities()
-          return
-        }
-      } catch (error) {
-        logger.warn('校验绑定状态失败:', error)
-        // 网络抖动时保留本地 Token 尝试重连，避免误申请绑定码
-        if (deviceToken.value) {
-          await connectWs()
-          return
-        }
-      }
-
-      if (!deviceToken.value) {
-        await requestBindCode()
-      }
-    }
-
-    function setDeviceName(name) {
-      deviceName.value = name || '教室设备'
-    }
-
-    async function recordCommand(envelope) {
-      lastSyncTime.value = formatDateTime(new Date())
-
-      // 弹窗指令随 TTS 一起下发，动态里不重复记录
-      if (envelope.type === 'SHOW_MESSAGE') {
+      // 有 Token 即视为已绑定（bound 以前未持久化，重启后可能为 false）
+      if (deviceToken.value) {
+        bound.value = true
+        await connectWs()
+        await syncActivities()
         return
       }
 
-      stats.value.notificationCount += 1
-      if (envelope.type === 'TTS') {
-        stats.value.ttsCount += 1
+      if (await syncFromRustConfig()) {
+        await connectWs()
+        await syncActivities()
+        return
       }
 
-      // 从服务端拉取历史，确保展示发送人昵称
-      await syncActivities()
+      if (await recoverBindingFromServer()) {
+        await connectWs()
+        await syncActivities()
+        return
+      }
+
+      await requestBindCode()
     }
 
     return {
@@ -373,7 +311,7 @@ export const useDeviceStore = defineStore(
     persist: {
       key: 'broadcast-device',
       storage: localStorage,
-      paths: ['deviceId', 'deviceToken', 'deviceName', 'deptName', 'stats', 'activities'],
+      paths: ['deviceId', 'deviceToken', 'deviceName', 'deptName', 'bound', 'stats', 'activities'],
     },
   }
 )

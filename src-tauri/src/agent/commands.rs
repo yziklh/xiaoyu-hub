@@ -12,6 +12,11 @@ pub fn agent_get_status(manager: State<'_, AgentManager>) -> String {
 }
 
 #[tauri::command]
+pub fn agent_get_settings(manager: State<'_, AgentManager>) -> crate::agent::config::AgentSettings {
+    manager.get_settings()
+}
+
+#[tauri::command]
 pub fn agent_get_config(manager: State<'_, AgentManager>) -> AgentConfig {
     manager.get_config()
 }

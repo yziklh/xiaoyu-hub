@@ -4,9 +4,9 @@ mod agent;
 mod commands;
 mod system;
 
+use agent::logger;
 use agent::paths;
 use agent::AgentManager;
-use agent::logger;
 use system::SystemService;
 use tauri::{
     menu::{Menu, MenuItem},
@@ -34,32 +34,27 @@ fn init_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let quit_item = MenuItem::with_id(app, "tray_quit", "退出", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show_item, &test_item, &about_item, &quit_item])?;
 
-    let icon = app
-        .default_window_icon()
-        .ok_or("缺少应用图标")?
-        .clone();
+    let icon = app.default_window_icon().ok_or("缺少应用图标")?.clone();
 
     let _tray = TrayIconBuilder::new()
         .icon(icon)
         .menu(&menu)
         .tooltip("教室小助手")
-        .on_menu_event(|app, event| {
-            match event.id.as_ref() {
-                "tray_show" => show_main_window(app),
-                "tray_test_tts" => {
-                    if let Some(manager) = app.try_state::<AgentManager>() {
-                        let _ = manager.test_tts("教室小助手语音测试");
-                    }
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "tray_show" => show_main_window(app),
+            "tray_test_tts" => {
+                if let Some(manager) = app.try_state::<AgentManager>() {
+                    let _ = manager.test_tts("教室小助手语音测试");
                 }
-                "tray_about" => show_main_window(app),
-                "tray_quit" => {
-                    if let Some(manager) = app.try_state::<AgentManager>() {
-                        manager.stop(app);
-                    }
-                    app.exit(0);
-                }
-                _ => {}
             }
+            "tray_about" => show_main_window(app),
+            "tray_quit" => {
+                if let Some(manager) = app.try_state::<AgentManager>() {
+                    manager.stop(app);
+                }
+                app.exit(0);
+            }
+            _ => {}
         })
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {
@@ -118,6 +113,13 @@ pub fn run() {
                     logger::warn(&format!("同步开机自启失败: {}", e));
                 }
             }
+            // 凭据只保留在 Rust 配置内；已绑定设备启动后自动恢复连接。
+            if agent_manager.has_device_token() {
+                if let Err(error) = agent_manager.restart(app.handle(), agent_manager.get_config())
+                {
+                    logger::warn(&format!("恢复 Agent 连接失败: {error}"));
+                }
+            }
             app.manage(agent_manager);
 
             let system_service = SystemService::new();
@@ -139,13 +141,13 @@ pub fn run() {
                 });
             }
 
-            // WebSocket 由前端 bootstrap 统一触发，避免与 Rust 重复连接
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             get_app_version,
             get_app_data_dir,
             agent::commands::agent_get_status,
+            agent::commands::agent_get_settings,
             agent::commands::agent_get_config,
             agent::commands::agent_configure,
             agent::commands::agent_stop,
@@ -166,6 +168,13 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|app_handle, event| {
+            // 退出前主动断开 WebSocket，避免服务端残留僵尸在线会话
+            if let RunEvent::ExitRequested { .. } = event {
+                if let Some(manager) = app_handle.try_state::<AgentManager>() {
+                    manager.stop(app_handle);
+                }
+            }
+
             // macOS 点击 Dock 图标时唤起隐藏到后台的窗口
             #[cfg(target_os = "macos")]
             if let RunEvent::Reopen { .. } = event {

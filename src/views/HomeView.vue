@@ -14,8 +14,12 @@
           </div>
         </section>
 
-        <!-- 运行状态 -->
-        <section class="runtime-card" :class="statusClass">
+        <!-- 运行状态：未绑定或离线时可点击跳转设备管理 -->
+        <section
+          class="runtime-card"
+          :class="[statusClass, { clickable: canGoDevice }]"
+          @click="goDeviceIfNeeded"
+        >
           <div class="runtime-left">
             <div class="runtime-icon">🖥</div>
             <div>
@@ -101,9 +105,12 @@ const statusTitle = computed(() => {
   return map[deviceStore.connectionStatus] || '离线'
 })
 
+const canGoDevice = computed(() => !deviceStore.isBound || !deviceStore.isOnline)
+
 const statusBadge = computed(() => {
-  if (!deviceStore.isBound) return '前往设备管理连接'
-  return deviceStore.isOnline ? '一切正常 · 教室小助手正在守护课堂' : '请检查设备连接'
+  if (!deviceStore.isBound) return '前往设备管理连接 →'
+  if (!deviceStore.isOnline) return '前往设备管理重连 →'
+  return '一切正常 · 教室小助手正在守护课堂'
 })
 
 const runtimeDesc = computed(() => {
@@ -143,6 +150,13 @@ function updateUptime() {
 
 function go(path) {
   router.push(path)
+}
+
+/** 未绑定或离线时跳转设备管理页 */
+function goDeviceIfNeeded() {
+  if (canGoDevice.value) {
+    router.push(ROUTES.DEVICE)
+  }
 }
 
 onMounted(() => {
@@ -249,6 +263,22 @@ onUnmounted(() => {
   border-radius: 16px;
   background: #fff;
   border: 1px solid #dbeafe;
+}
+
+.runtime-card.clickable {
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.runtime-card.clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(15, 35, 52, 0.08);
+}
+
+.runtime-card.clickable:active {
+  transform: translateY(0);
 }
 
 .runtime-card.online {
