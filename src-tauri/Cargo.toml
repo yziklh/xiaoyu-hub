@@ -1,6 +1,6 @@
 [package]
 name = "classroom-agent"
-version = "1.0.1"
+version = "1.0.2"
 description = "教室小助手 Windows 客户端"
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT"
