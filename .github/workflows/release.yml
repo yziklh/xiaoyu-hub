@@ -91,9 +91,9 @@ jobs:
 
           ### 📦 安装说明
           请根据您的操作系统下载对应的安装包：
-          - **Windows**: \`.exe\` 安装程序（NSIS）
-          - **macOS (Apple Silicon)**: \`.dmg\` 适用于 M1/M2/M3/M4 芯片的 Mac
-          - **macOS (Intel)**: \`.dmg\` 适用于 Intel 芯片的 Mac
+          - **Windows**: exe 安装程序（NSIS）
+          - **macOS (Apple Silicon)**: dmg 适用于 M1/M2/M3/M4 芯片的 Mac
+          - **macOS (Intel)**: dmg 适用于 Intel 芯片的 Mac
 
           ### 🔗 相关链接
           - [项目仓库](https://github.com/${{ github.repository }})"
@@ -173,6 +173,8 @@ jobs:
           # 若配置了更新包签名私钥，可取消注释并在 GitHub Secrets 中添加 TAURI_SIGNING_PRIVATE_KEY
           # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
+          # 项目使用 npm（package-lock.json），避免 tauri-action 误检测 pnpm-lock.yaml
+          tauriScript: npm run tauri
           tagName: ${{ steps.release-info.outputs.tag_name }}
           releaseName: ${{ steps.release-info.outputs.release_name }}
           releaseBody: ${{ steps.release-info.outputs.release_body }}

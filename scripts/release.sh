@@ -153,8 +153,8 @@ if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --
   MSG="${COMMIT_MSG:-$DEFAULT_MSG}"
   log "提交工作区改动..."
   run_cmd git add -A
-  # 排除不应提交的文件
-  run_cmd git reset HEAD -- signing-keys.local.md .env .env.local 2>/dev/null || true
+  # 排除不应提交的文件（项目使用 npm，不提交 pnpm-lock.yaml）
+  run_cmd git reset HEAD -- signing-keys.local.md .env .env.local pnpm-lock.yaml 2>/dev/null || true
   if $DRY_RUN || ! git diff --cached --quiet; then
     run_cmd git commit -m "$MSG"
   else
