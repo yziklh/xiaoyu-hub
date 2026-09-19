@@ -7,7 +7,7 @@
       </div>
       <div class="footer-right">
         <span class="version">版本 v{{ appVersion }}</span>
-        <button class="link-btn" :disabled="updating" @click="handleCheckUpdate">
+        <button class="link-btn" :disabled="updating" @click="handleCheckUpdate()">
           {{ updating ? updateStatusText : '检查更新' }}
         </button>
       </div>
@@ -66,7 +66,9 @@ const footerStatus = computed(() => {
   return '云端未连接 | 请检查网络'
 })
 
+/** @param {boolean} [silent=false] 静默检查（仅启动时），不弹 toast */
 async function handleCheckUpdate(silent = false) {
+  const quiet = silent === true
   try {
     updating.value = true
     updateStatusText.value = '检查中...'
@@ -75,15 +77,16 @@ async function handleCheckUpdate(silent = false) {
       pendingUpdate.value = result
       forceUpdate.value = !!result.forceUpdate
       updateDialogVisible.value = true
-      if (!silent) {
+      if (!quiet) {
         toast.success(`发现新版本 ${result.version}`)
       }
-    } else if (!silent) {
+    } else if (!quiet) {
       toast.success('当前已是最新版本')
     }
   } catch (error) {
-    if (!silent) {
-      toast.error(error.message || error || '检查更新失败')
+    const message = error?.message || String(error || '检查更新失败')
+    if (!quiet) {
+      toast.error(message)
     }
   } finally {
     updating.value = false

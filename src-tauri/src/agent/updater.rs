@@ -35,15 +35,43 @@ struct CheckUpdateData {
     signature: Option<String>,
 }
 
+/// 当前运行平台（与管理端 client_version.platform 一致）
+pub fn current_platform() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "windows"
+    } else if cfg!(target_os = "macos") {
+        "macos"
+    } else {
+        "linux"
+    }
+}
+
+/// Tauri Updater 清单参数
+pub fn current_updater_target() -> (&'static str, &'static str) {
+    if cfg!(target_os = "windows") {
+        ("windows", "x86_64")
+    } else if cfg!(target_os = "macos") {
+        if cfg!(target_arch = "aarch64") {
+            ("darwin", "aarch64")
+        } else {
+            ("darwin", "x86_64")
+        }
+    } else {
+        ("linux", "x86_64")
+    }
+}
+
 /// 调用管理端 check-update 接口
 pub async fn check_update(
     config: &AgentConfig,
     current_version: &str,
 ) -> Result<UpdateCheckResult, String> {
+    let platform = current_platform();
     let url = format!(
-        "{}/api/device/check-update?version={}&platform=windows",
+        "{}/api/device/check-update?version={}&platform={}",
         config.api_base_url.trim_end_matches('/'),
-        urlencoding::encode(current_version)
+        urlencoding::encode(current_version),
+        urlencoding::encode(platform)
     );
 
     let client = reqwest::Client::builder()

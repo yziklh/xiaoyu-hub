@@ -68,10 +68,15 @@ pub async fn updater_check(
 
     // 管理端配置了签名包时，优先走 tauri-plugin-updater
     if result.has_update && result.signature.as_ref().is_some_and(|s| !s.is_empty()) {
+        let platform = updater::current_platform();
+        let (target, arch) = updater::current_updater_target();
         let endpoint = format!(
-            "{}/api/device/update-manifest?version={}&platform=windows&target=windows&arch=x86_64",
+            "{}/api/device/update-manifest?version={}&platform={}&target={}&arch={}",
             config.api_base_url.trim_end_matches('/'),
-            urlencoding::encode(APP_VERSION)
+            urlencoding::encode(APP_VERSION),
+            urlencoding::encode(platform),
+            urlencoding::encode(target),
+            urlencoding::encode(arch)
         );
         if updater::check_with_plugin(&app, &endpoint).await? {
             return Ok(result);
