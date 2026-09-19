@@ -20,6 +20,8 @@ components.d.ts
 src-tauri/target/
 src-tauri/gen/
 src-tauri/classroom-agent.key
+src-tauri/classroom-agent.key.pub
+signing-keys.local.md
 
 # Editor directories and files
 .vscode/
